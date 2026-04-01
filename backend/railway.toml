@@ -1,8 +1,11 @@
 [build]
-builder = "nixpacks"
+cmd = "npm ci"
 
 [deploy]
 healthcheckPath = "/api/health"
 healthcheckTimeout = 300
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 5
+
+[start]
+cmd = "PUPPETEER_EXECUTABLE_PATH=$(which chromium) node server.js"
