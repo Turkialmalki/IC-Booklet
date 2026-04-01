@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
-import axios from 'axios'
+import api, { API_BASE } from '../utils/api.js'
 import ProgressBar from '../components/shared/ProgressBar.jsx'
 
 export default function Export() {
@@ -19,7 +19,7 @@ export default function Export() {
   useEffect(() => {
     if (phase === 'done') return
 
-    const es = new EventSource(`/api/export/progress/${jobId}`)
+    const es = new EventSource(`${API_BASE}/api/export/progress/${jobId}`)
     esRef.current = es
 
     es.addEventListener('progress', (e) => {
@@ -58,7 +58,7 @@ export default function Export() {
 
   async function pollStatus() {
     try {
-      const { data } = await axios.get(`/api/export/status/${jobId}`)
+      const { data } = await api.get(`/api/export/status/${jobId}`)
       if      (data.status === 'done')   { setResult(data); setPhase('done') }
       else if (data.status === 'failed') { setError(data.error || 'Export failed'); setPhase('failed') }
       else    setTimeout(pollStatus, 2000)

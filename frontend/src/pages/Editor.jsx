@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import axios from 'axios'
+import api from '../utils/api.js'
 import { observer } from 'mobx-react-lite'
 import { createStore } from 'polotno/model/store'
 import { PolotnoContainer, WorkspaceWrap } from 'polotno/polotno-app'
@@ -186,7 +186,7 @@ export default function Editor() {
   async function loadTemplate() {
     try {
       setLoading(true)
-      const { data } = await axios.get(`/api/templates/${templateId}`)
+      const { data } = await api.get(`/api/templates/${templateId}`)
       setTemplate(data)
       setTemplateName(data.name || 'Untitled')
 
@@ -272,7 +272,7 @@ export default function Editor() {
         thumbnail,
       }
 
-      const { data } = await axios.put(`/api/templates/${templateId}`, updated)
+      const { data } = await api.put(`/api/templates/${templateId}`, updated)
       setTemplate(data)
       setSaveStatus('saved')
       setTimeout(() => setSaveStatus(null), 2000)

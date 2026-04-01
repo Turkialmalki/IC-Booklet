@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import axios from 'axios'
+import api from '../utils/api.js'
 import { useImportStore } from '../store/index.js'
 import { validateRows } from '../utils/validator.js'
 import PreviewCanvas from '../components/preview/PreviewCanvas.jsx'
@@ -34,7 +34,7 @@ export default function Preview() {
 
   useEffect(() => {
     if (!templateId) { navigate('/dashboard'); return }
-    axios.get(`/api/templates/${templateId}`)
+    api.get(`/api/templates/${templateId}`)
       .then(({ data }) => {
         setTemplate(data)
         setOutputFilename(data.name?.toLowerCase().replace(/\s+/g, '-') || 'export')
@@ -78,7 +78,7 @@ export default function Preview() {
     try {
       setRendering(true)
       setAccurateRenderUrl(null)
-      const { data } = await axios.post('/api/preview/render', {
+      const { data } = await api.post('/api/preview/render', {
         pageJson: activePageJson,
         rowData: currentRowData,
         bindings: template.bindings,
@@ -107,7 +107,7 @@ export default function Preview() {
         assetJobId: assetJobId || null,
         outputFilename,
       }
-      const { data } = await axios.post('/api/export/start', payload)
+      const { data } = await api.post('/api/export/start', payload)
       navigate(`/export/${data.jobId}`, { state: { jobResult: data } })
     } catch {
       setExportError('Failed to start export. Is the backend running?')

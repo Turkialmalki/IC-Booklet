@@ -8,8 +8,8 @@ export function resolveImageClient(value, assetIndex = {}) {
   if (!value) return DEFAULT_PLACEHOLDER
   if (value.startsWith('data:image')) return value
   if (value.startsWith('http://') || value.startsWith('https://')) return value
-  // Server-relative paths (/storage/...) are valid browser URLs — return as-is
-  if (value.startsWith('/storage/')) return value
+  // Server-relative paths (/storage/...) — prefix with backend base in production
+  if (value.startsWith('/storage/')) return `${API_BASE}${value}`
 
   // Filename lookup — try exact, then lowercase
   const filename = value.split('/').pop() || value
@@ -21,8 +21,10 @@ export function resolveImageClient(value, assetIndex = {}) {
 
 // Fetch the file index for a ZIP upload job.
 // Pass null/undefined jobId to fetch a global index across ALL uploaded assets.
+const API_BASE = import.meta.env.VITE_API_URL || ''
+
 export async function fetchAssetIndex(jobId) {
-  const url = jobId ? `/api/assets/${jobId}/index` : '/api/assets/index/global'
+  const url = jobId ? `${API_BASE}/api/assets/${jobId}/index` : `${API_BASE}/api/assets/index/global`
   try {
     const res  = await fetch(url)
     if (!res.ok) return {}

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import axios from 'axios'
+import api from '../../utils/api.js'
 
 // Pre-load 29LT Azer weights so the font preview renders correctly
 const AZER_FILES = ['Thin','ExtraLight','Light','Regular','Medium','Bold','Black']
@@ -19,7 +19,7 @@ export default function FontsManager({ store, template, onTemplateChange }) {
 
   async function fetchFonts() {
     try {
-      const { data } = await axios.get('/api/fonts')
+      const { data } = await api.get('/api/fonts')
       setFonts(data.fonts || [])
     } catch {}
   }
@@ -32,7 +32,7 @@ export default function FontsManager({ store, template, onTemplateChange }) {
       setError(null)
       const form = new FormData()
       form.append('file', file)
-      const { data } = await axios.post('/api/fonts/upload', form)
+      const { data } = await api.post('/api/fonts/upload', form)
 
       // Register font with Polotno
       const fontName = file.name.replace(/\.(ttf|otf|woff2)$/i, '')

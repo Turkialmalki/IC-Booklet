@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import axios from 'axios'
+import api from '../../utils/api.js'
 import CropModal from './CropModal.jsx'
 
 const PLACEHOLDER_SRC = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMzAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iIzM3NDE1MSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzljYTNhZiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlPC90ZXh0Pjwvc3ZnPg=='
@@ -21,7 +21,7 @@ export default function ImagesPanel({ store }) {
       for (const file of files) {
         const form = new FormData()
         form.append('file', file)
-        const { data } = await axios.post('/api/assets/upload', form)
+        const { data } = await api.post('/api/assets/upload', form)
         added.push({ url: data.path, name: file.name })
       }
       setImages(prev => [...added, ...prev])

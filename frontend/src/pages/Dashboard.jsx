@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import axios from 'axios'
+import api from '../utils/api.js'
 import TemplateCard from '../components/shared/TemplateCard.jsx'
 
 export default function Dashboard() {
@@ -20,7 +20,7 @@ export default function Dashboard() {
   async function fetchTemplates() {
     try {
       setLoading(true)
-      const { data } = await axios.get('/api/templates')
+      const { data } = await api.get('/api/templates')
       setTemplates(data.templates || [])
     } catch {
       setError('Failed to load templates. Is the backend running?')
@@ -37,7 +37,7 @@ export default function Dashboard() {
       // Falls back to most-recently-updated if not found, or blank if neither exists.
       let seedPages = []
       try {
-        const { data: list } = await axios.get('/api/templates')
+        const { data: list } = await api.get('/api/templates')
         const all = list.templates || []
         // Prefer the dedicated Monshaat template
         const monshaat = all.find(t => t.id === 'tpl_monshaat')
@@ -45,12 +45,12 @@ export default function Dashboard() {
           ? monshaat.id
           : all.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))[0]?.id
         if (seedId) {
-          const { data: seed } = await axios.get(`/api/templates/${seedId}`)
+          const { data: seed } = await api.get(`/api/templates/${seedId}`)
           seedPages = seed.pages || []
         }
       } catch { /* no seed — start blank */ }
 
-      const { data } = await axios.post('/api/templates', {
+      const { data } = await api.post('/api/templates', {
         name: newName.trim(),
         pages: seedPages,
       })
@@ -68,7 +68,7 @@ export default function Dashboard() {
     if (!window.confirm('Delete this template? This cannot be undone.')) return
     try {
       setDeletingId(id)
-      await axios.delete(`/api/templates/${id}`)
+      await api.delete(`/api/templates/${id}`)
       setTemplates((prev) => prev.filter((t) => t.id !== id))
     } catch {
       setError('Failed to delete template.')

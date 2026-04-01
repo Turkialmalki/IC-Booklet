@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import axios from 'axios'
+import api from '../utils/api.js'
 import * as XLSX from 'xlsx'
 import Papa from 'papaparse'
 import { useImportStore } from '../store/index.js'
@@ -43,7 +43,7 @@ export default function Import() {
 
   useEffect(() => {
     reset()
-    axios.get(`/api/templates/${templateId}`)
+    api.get(`/api/templates/${templateId}`)
       .then(({ data }) => {
         setTemplate(data)
         // Pre-populate asset index with every image already on the server so CSV
@@ -122,7 +122,7 @@ export default function Import() {
       setZipUploading(true)
       const form = new FormData()
       form.append('file', file)
-      const { data } = await axios.post('/api/assets/upload', form)
+      const { data } = await api.post('/api/assets/upload', form)
       setAssetJobId(data.jobId)
       setZipFileName(file.name)
       setZipFileCount(data.fileCount ?? null)
