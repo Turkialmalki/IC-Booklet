@@ -38,8 +38,9 @@ await fastify.register(fontsRoutes, { prefix: '/api/fonts' })
 fastify.get('/api/health', async () => ({ status: 'ok', timestamp: new Date().toISOString() }))
 
 try {
-  await fastify.listen({ port: 4000, host: '0.0.0.0' })
-  console.log('TemplateForge backend running on http://localhost:4000')
+  const port = parseInt(process.env.PORT || '4000')
+  await fastify.listen({ port, host: '0.0.0.0' })
+  console.log(`TemplateForge backend running on port ${port}`)
 } catch (err) {
   fastify.log.error(err)
   process.exit(1)

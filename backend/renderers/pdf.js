@@ -208,10 +208,14 @@ async function getBrowser() {
   // Relaunch if browser is gone or has disconnected (e.g. after OOM crash)
   if (!_browser || !_browser.isConnected()) {
     if (_browser) { try { await _browser.close() } catch {} }
-    _browser = await puppeteer.launch({
+    const launchOpts = {
       headless: true,
       args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
-    })
+    }
+    if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+      launchOpts.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH
+    }
+    _browser = await puppeteer.launch(launchOpts)
   }
   return _browser
 }
