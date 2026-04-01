@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.env
+.env.local
+*.log
+storage/exports/
+storage/thumbnails/
+storage/assets/
+storage/fonts/
+*.tmp
+.DS_Store

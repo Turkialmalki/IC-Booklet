@@ -1,0 +1,188 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── 29LT Azer custom font ── */
+@font-face { font-family: '29LTAzer'; font-weight: 100; src: url('./assets/fonts/29LTAzer-Thin.ttf') format('truetype'); }
+@font-face { font-family: '29LTAzer'; font-weight: 200; src: url('./assets/fonts/29LTAzer-ExtraLight.ttf') format('truetype'); }
+@font-face { font-family: '29LTAzer'; font-weight: 300; src: url('./assets/fonts/29LTAzer-Light.ttf') format('truetype'); }
+@font-face { font-family: '29LTAzer'; font-weight: 400; src: url('./assets/fonts/29LTAzer-Regular.ttf') format('truetype'); }
+@font-face { font-family: '29LTAzer'; font-weight: 500; src: url('./assets/fonts/29LTAzer-Medium.ttf') format('truetype'); }
+@font-face { font-family: '29LTAzer'; font-weight: 700; src: url('./assets/fonts/29LTAzer-Bold.ttf') format('truetype'); }
+@font-face { font-family: '29LTAzer'; font-weight: 900; src: url('./assets/fonts/29LTAzer-Black.ttf') format('truetype'); }
+
+:root {
+  --color-brand: #1A1A2E;
+  --color-accent: #E94560;
+}
+
+body {
+  @apply bg-gray-50 text-gray-900 antialiased;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Polotno / Blueprint.js toolbar — dark theme overrides
+   ───────────────────────────────────────────────────────────── */
+
+/* Hide free-trial notice and "Powered by Polotno" credit */
+.polotno-trial-hint,
+[class*="trialHint"],
+[class*="trial-hint"],
+[class*="TrialHint"],
+[class*="powered"],
+[class*="Powered"],
+a[href*="polotno.com"],
+div[class*="credit"],
+div[class*="Credit"],
+/* Polotno injects a floating badge at bottom of workspace */
+div[style*="polotno"],
+a[style*="polotno"] {
+  display: none !important;
+}
+
+/* Target the specific Polotno credit banner by its known position */
+.polotno-workspace-container > div > a,
+.polotno-workspace-container a[target="_blank"] {
+  display: none !important;
+}
+
+/* Toolbar container */
+.bp5-navbar.polotno-toolbar,
+.polotno-toolbar {
+  background: #111827 !important;   /* gray-900 */
+  border-bottom: 1px solid #1f2937 !important;
+  box-shadow: none !important;
+  min-height: 44px !important;
+  height: 44px !important;
+  padding: 0 6px !important;
+}
+
+/* Toolbar group spacing */
+.polotno-toolbar .bp5-navbar-group {
+  height: 44px !important;
+}
+
+/* Generic toolbar buttons */
+.polotno-toolbar .bp5-button {
+  color: #9ca3af !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  border-radius: 6px !important;
+  min-height: 28px !important;
+  min-width: 28px !important;
+  padding: 0 6px !important;
+  transition: background 0.15s, color 0.15s !important;
+}
+.polotno-toolbar .bp5-button:hover:not(:disabled) {
+  background: #1f2937 !important;
+  color: #f9fafb !important;
+}
+.polotno-toolbar .bp5-button.bp5-active,
+.polotno-toolbar .bp5-button[class*="active"] {
+  background: #2563eb !important;
+  color: #fff !important;
+}
+.polotno-toolbar .bp5-button:disabled {
+  opacity: 0.35 !important;
+}
+
+/* Icons inside buttons */
+.polotno-toolbar .bp5-icon,
+.polotno-toolbar .bp5-icon svg {
+  color: inherit !important;
+  fill: currentColor !important;
+}
+
+/* Dividers */
+.polotno-toolbar .bp5-navbar-divider {
+  border-left-color: #1f2937 !important;
+  margin: 0 4px !important;
+}
+
+/* Input fields (font size, etc.) */
+.polotno-toolbar input,
+.polotno-toolbar .bp5-input {
+  background: #1f2937 !important;
+  color: #f3f4f6 !important;
+  border: 1px solid #374151 !important;
+  border-radius: 6px !important;
+  box-shadow: none !important;
+}
+.polotno-toolbar input:focus,
+.polotno-toolbar .bp5-input:focus {
+  border-color: #3b82f6 !important;
+  outline: none !important;
+  box-shadow: 0 0 0 2px rgba(59,130,246,0.2) !important;
+}
+
+/* Select / font family drop-downs */
+.polotno-toolbar select,
+.polotno-toolbar .bp5-html-select select,
+.polotno-toolbar .bp5-select select {
+  background: #1f2937 !important;
+  color: #f3f4f6 !important;
+  border: 1px solid #374151 !important;
+  border-radius: 6px !important;
+  box-shadow: none !important;
+}
+
+/* Color-swatch button border */
+.polotno-toolbar [class*="colorBox"],
+.polotno-toolbar [class*="color-box"],
+.polotno-toolbar [class*="ColorBox"] {
+  border: 2px solid #374151 !important;
+  border-radius: 4px !important;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Polotno Workspace canvas area
+   ───────────────────────────────────────────────────────────── */
+
+/* Canvas checkerboard background */
+.polotno-workspace-container,
+[class*="workspace-container"],
+[class*="WorkspaceContainer"],
+div[class*="go"][style*="overflow"] {
+  background: #0d1117 !important;
+}
+
+/* Zoom button cluster */
+[class*="zoom-buttons"],
+[class*="ZoomButtons"],
+.bp5-button-group[class*="zoom"] {
+  background: #161b22 !important;
+  border: 1px solid #30363d !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5) !important;
+}
+
+/* Popover panels (color picker, font picker) */
+.bp5-popover2-content,
+.bp5-popover-content {
+  background: #161b22 !important;
+  border: 1px solid #30363d !important;
+  border-radius: 8px !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6) !important;
+  color: #c9d1d9 !important;
+}
+.bp5-popover2-arrow-fill,
+.bp5-popover-arrow-fill { fill: #161b22 !important; }
+
+/* Menu items inside popovers */
+.bp5-menu {
+  background: #161b22 !important;
+  color: #c9d1d9 !important;
+}
+.bp5-menu-item:hover {
+  background: #21262d !important;
+  color: #f0f6fc !important;
+}
+
+/* Tooltip */
+.bp5-tooltip2 .bp5-popover2-content,
+.bp5-tooltip .bp5-popover-content {
+  background: #21262d !important;
+  color: #c9d1d9 !important;
+  font-size: 12px !important;
+}
