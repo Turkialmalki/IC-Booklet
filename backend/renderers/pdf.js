@@ -1,13 +1,14 @@
 import puppeteer from 'puppeteer'
-import { PDFDocument } from 'pdf-lib'
-import { readFileSync, existsSync } from 'fs'
-import { join, dirname } from 'path'
+import { PDFDocument, PDFName, PDFString } from 'pdf-lib'
+import { readFileSync, existsSync, readdirSync } from 'fs'
+import { join, dirname, extname } from 'path'
 import { fileURLToPath } from 'url'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
-const FONTS_DIR = join(__dirname, '../../storage/fonts')
+const UPLOADED_FONTS_DIR = join(__dirname, '../../storage/fonts')
+const SYSTEM_FONTS_DIR = join(__dirname, '../../frontend/src/assets/fonts')
 
-// Build @font-face CSS for 29LTAzer from local TTF files.
+// Build @font-face CSS for 29LTAzer and custom fonts from local files.
 // Falls back to empty string if the font files aren't present.
 function getLocalFontCss() {
   const weights = [
@@ -19,13 +20,31 @@ function getLocalFontCss() {
     { file: '29LTAzer-Bold.ttf',       weight: 700 },
     { file: '29LTAzer-Black.ttf',      weight: 900 },
   ]
-  return weights
-    .filter(({ file }) => existsSync(join(FONTS_DIR, file)))
+  const sysFontsCss = weights
+    .filter(({ file }) => existsSync(join(SYSTEM_FONTS_DIR, file)))
     .map(({ file, weight }) => {
-      const b64 = readFileSync(join(FONTS_DIR, file)).toString('base64')
+      const b64 = readFileSync(join(SYSTEM_FONTS_DIR, file)).toString('base64')
       return `@font-face{font-family:'29LTAzer';src:url('data:font/truetype;base64,${b64}') format('truetype');font-weight:${weight};font-style:normal;}`
     })
     .join('\n')
+
+  let customFontsCss = ''
+  if (existsSync(UPLOADED_FONTS_DIR)) {
+    const files = readdirSync(UPLOADED_FONTS_DIR)
+    customFontsCss = files
+      .filter(f => f.endsWith('.ttf') || f.endsWith('.otf') || f.endsWith('.woff2'))
+      .map(file => {
+        const ext = extname(file).toLowerCase()
+        const format = ext === '.ttf' ? 'truetype' : ext === '.otf' ? 'opentype' : 'woff2'
+        const mimetype = ext === '.ttf' ? 'font/truetype' : ext === '.otf' ? 'font/opentype' : 'font/woff2'
+        const b64 = readFileSync(join(UPLOADED_FONTS_DIR, file)).toString('base64')
+        const fontFamily = file.replace(/\.(ttf|otf|woff2)$/i, '')
+        return `@font-face{font-family:'${fontFamily}';src:url('data:${mimetype};base64,${b64}') format('${format}');font-weight:normal;font-style:normal;}`
+      })
+      .join('\n')
+  }
+
+  return sysFontsCss + '\n' + customFontsCss
 }
 
 function escapeHtml(str) {
@@ -69,17 +88,17 @@ function elementToHtml(el, textStyles) {
     // fontWeight may be a number (700) or a string ('bold'/'normal')
     const fw = el.fontWeight ?? ref?.weight ?? 'normal'
     const fontWeight = (fw === 'bold') ? 700 : (fw === 'normal') ? 400 : Number(fw) || 400
-    // RTL: explicit binding flag, element align, or style ref
-    const rtl        = !!el.rtl || el.align === 'right' || !!ref?.rtl
-    const align      = rtl ? 'right' : (el.align || 'left')
+    // RTL: explicit flag on element, or style ref
+    const rtl        = !!el.rtl || !!ref?.rtl
+    const align      = el.align || (rtl ? 'right' : 'left')
     const lineHeight = el.lineHeight || 1.4
     const minFs      = el.minFontSize || 6
 
-    // Auto-shrink: if the text would overflow the element's height, reduce
-    // font size until it fits (or reaches minFs floor). This prevents text
-    // from spilling past the canvas boundary and being clipped.
+    // Auto-shrink: only when the binding explicitly opts in via shrinkOnOverflow.
+    // By default, text renders at the authored fontSize and overflows via min-height,
+    // matching Polotno's auto-expanding canvas behavior.
     let fontSize = baseFontSize
-    if (h > 0 && el.text) {
+    if (el.shrinkOnOverflow && h > 0 && el.text) {
       let fs = baseFontSize
       while (fs > minFs) {
         const lines = estimateLineCount(el.text, w || 400, fs)
@@ -95,25 +114,41 @@ function elementToHtml(el, textStyles) {
       (rotation ? `transform:rotate(${rotation}deg);transform-origin:center;` : '') +
       `opacity:${opacity};`
 
+    // Trim trailing whitespace per line so pre-wrap doesn't skew center/right alignment
+    const displayText = (el.text || '').split('\n').map(l => l.trimEnd()).join('\n')
+    // justify needs pre-line (pre-wrap disables full justification in CSS)
+    const whiteSpace = align === 'justify' ? 'pre-line' : 'pre-wrap'
+
     return `<div style="${textPos}font-family:'${fontFamily}',sans-serif;font-size:${fontSize}px;` +
       `color:${color};font-weight:${fontWeight};text-align:${align};` +
       `direction:${rtl ? 'rtl' : 'ltr'};line-height:${lineHeight};` +
-      `word-break:break-word;white-space:pre-wrap;">` +
-      `${escapeHtml(el.text || '')}</div>`
+      `word-break:break-word;white-space:${whiteSpace};${el.href ? 'text-decoration:underline;' : ''}">` +
+      `${escapeHtml(displayText)}</div>`
   }
 
   if (el.type === 'image') {
     const src = el.src || ''
     if (!src) return `<div style="${base}background:#f3f4f6;border-radius:4px;"></div>`
 
-    const fit    = el.imageFit   || 'cover'
-    const frame  = el.imageFrame || 'rect'
     const isLogo = !!el.isLogo
     const isBg   = !!el.isBackground
+    // Logos and regular placeholders default to contain so the full image is
+    // always visible inside the frame; backgrounds default to cover.
+    const fit    = el.imageFit || (isBg ? 'cover' : 'contain')
+    const frame  = el.imageFrame || 'rect'
 
-    // Apply clip/shape directly on the outer (positioned) div so transparent
-    // PNG corners and any canvas background are fully hidden — no shadow so
-    // there is no visible "card" frame around the image.
+    // Polotno crop fractions (0-1 relative to element dimensions).
+    // Scale and offset the img so only the intended crop window fills the frame.
+    const cropX = el.cropX ?? 0
+    const cropY = el.cropY ?? 0
+    const cropW = (el.cropWidth  > 0 && el.cropWidth  != null) ? el.cropWidth  : 1
+    const cropH = (el.cropHeight > 0 && el.cropHeight != null) ? el.cropHeight : 1
+
+    const imgW    = Math.round(w / cropW)
+    const imgH    = Math.round(h / cropH)
+    const imgLeft = -Math.round((cropX / cropW) * w)
+    const imgTop  = -Math.round((cropY / cropH) * h)
+
     let clipStyle = 'overflow:hidden;'
     if (frame === 'rounded') {
       clipStyle += 'border-radius:8px;'
@@ -122,20 +157,21 @@ function elementToHtml(el, textStyles) {
     }
 
     // Logo: multiply blend removes white background halos on PNG logos
-    const blend  = isLogo ? 'mix-blend-mode:multiply;' : ''
+    const blend = isLogo ? 'mix-blend-mode:multiply;' : ''
 
-    const imgStyle = `width:100%;height:100%;object-fit:${fit};object-position:center;display:block;${blend}`
+    // img is absolutely positioned inside the container so the crop offset is
+    // applied correctly. The container (position:absolute) acts as the
+    // containing block, and overflow:hidden clips anything outside the frame.
+    const imgStyle = `position:absolute;left:${imgLeft}px;top:${imgTop}px;` +
+      `width:${imgW}px;height:${imgH}px;` +
+      `object-fit:${fit};object-position:center;display:block;${blend}`
 
-    // Single container div handles both positioning and clipping.
-    // Inner relative div is kept for scrim overlay positioning.
     let html = `<div style="${pos}${clipStyle}">`
-    html += `<div style="position:relative;width:100%;height:100%;">`
     html += `<img src="${src}" style="${imgStyle}" />`
-    // Scrim overlay for full-bleed background images (text must render above this)
     if (isBg) {
       html += `<div style="position:absolute;inset:0;background:rgba(0,0,0,0.45);"></div>`
     }
-    html += `</div></div>`
+    html += `</div>`
     return html
   }
 
@@ -171,11 +207,9 @@ function parseDim(v, fallback) {
   return n > 0 ? n : fallback
 }
 
-// Cached font CSS — built once per process (fonts don't change at runtime)
-let _fontCss = null
+// Re-build on the fly to support newly uploaded fonts without restart
 function getFontCss() {
-  if (_fontCss === null) _fontCss = getLocalFontCss()
-  return _fontCss
+  return getLocalFontCss()
 }
 
 function buildPageHtml(pageJson, textStyles = {}) {
@@ -275,6 +309,31 @@ export async function renderPagesToPdf(pageJsonArray, textStyles = {}) {
     const img    = await doc.embedPng(pngBuf)
     const page   = doc.addPage([width, height])
     page.drawImage(img, { x: 0, y: 0, width, height })
+
+    // Add clickable URI annotations for text elements that have an href.
+    // PDF coordinate origin is bottom-left (y increases upward), so we flip:
+    //   pdfY = pageHeight - canvasY - elementHeight
+    for (const el of pageJson.children || []) {
+      if (el.type !== 'text' || !el.href) continue
+      const x1 = el.x || 0
+      const y1 = height - (el.y || 0) - (el.height || 0)
+      const x2 = x1 + (el.width || 0)
+      const y2 = height - (el.y || 0)
+      const annotDict = doc.context.obj({
+        Type: PDFName.of('Annot'),
+        Subtype: PDFName.of('Link'),
+        Rect: doc.context.obj([x1, y1, x2, y2]),
+        A: doc.context.obj({
+          Type: PDFName.of('Action'),
+          S: PDFName.of('URI'),
+          URI: PDFString.of(el.href),
+        }),
+        Border: doc.context.obj([0, 0, 0]),
+        F: 4,
+      })
+      const annotRef = doc.context.register(annotDict)
+      page.node.addAnnot(annotRef)
+    }
   }
 
   return Buffer.from(await doc.save())

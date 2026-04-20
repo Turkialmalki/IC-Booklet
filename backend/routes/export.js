@@ -134,7 +134,7 @@ async function buildPptxPages(templatePages, rows, bindings, columnBindings, exp
 
 // Column lookup with underscore ↔ space normalisation fallback
 function lookupCol(rowData, col) {
-  if (!rowData) return undefined
+  if (!rowData || col == null) return undefined
   let val = rowData[col]
   if (val !== undefined) return val
   if (col.includes('_')) {
@@ -192,9 +192,26 @@ function mergePageData(pageJson, rowData, bindings, columnBindings, layoutRules)
       for (const prop of BIND_PROPS) {
         if (binding[prop] !== undefined) el[prop] = binding[prop]
       }
-      const col   = columnBindings?.[binding.column] || binding.column
+      const col   = binding.column ? (columnBindings?.[binding.column] || binding.column) : null
       const value = lookupCol(rowData, col)
-      if (value !== undefined && value !== null && value !== '') {
+      if (binding.property === 'url') {
+        // Display text: prefer staticLabel (new), fall back to label column (backward compat)
+        if (binding.staticLabel) {
+          el.text = binding.staticLabel
+        } else if (binding.column && binding.column !== binding.urlColumn) {
+          if (value !== undefined && value !== null && value !== '') {
+            el.text = String(value)
+          }
+        }
+        // href from URL column (binding.urlColumn)
+        const urlColName = columnBindings?.[binding.urlColumn] || binding.urlColumn
+        if (urlColName) {
+          const urlValue = lookupCol(rowData, urlColName)
+          if (urlValue !== undefined && urlValue !== null && urlValue !== '') {
+            el.href = String(urlValue)
+          }
+        }
+      } else if (value !== undefined && value !== null && value !== '') {
         if (binding.property === 'text') {
           let text = String(value)
           // RTL auto-detection

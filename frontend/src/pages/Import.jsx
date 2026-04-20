@@ -143,16 +143,20 @@ export default function Import() {
   const explicitBindings = template?.bindings || {}
 
   // Build a unified list: { column, property, source }
+  // For URL bindings use urlColumn as the key (b.column is undefined in the new format)
+  const bindingKey = (b) => b.property === 'url' ? b.urlColumn : b.column
   const placeholders = [
     // From explicit PlaceholderPanel bindings
-    ...Object.values(explicitBindings).map(b => ({
-      column: b.column,
-      property: b.property,
-      source: 'binding',
-    })),
+    ...Object.values(explicitBindings)
+      .filter(b => bindingKey(b))
+      .map(b => ({
+        column: bindingKey(b),
+        property: b.property,
+        source: 'binding',
+      })),
     // From {{var}} detected in text elements (not already in explicit bindings)
     ...[...detectedVars]
-      .filter(v => !Object.values(explicitBindings).some(b => b.column === v))
+      .filter(v => !Object.values(explicitBindings).some(b => bindingKey(b) === v))
       .map(v => ({ column: v, property: 'text', source: 'detected' })),
   ]
 

@@ -3,7 +3,7 @@
 // Look up a column value in rowData, with a fallback that normalises
 // underscores ↔ spaces so "business_brief_ar" matches "business brief ar".
 function lookupCol(rowData, col) {
-  if (!rowData) return undefined
+  if (!rowData || col == null) return undefined
   let val = rowData[col]
   if (val !== undefined) return val
   // Fallback: try spaces instead of underscores (e.g. Excel column "business brief ar")
@@ -76,9 +76,26 @@ export function mergePageData(pageJson, rowData, bindings, columnBindings, layou
       }
 
       // 2. Resolve and apply bound value
-      const actualCol = columnBindings?.[binding.column] || binding.column
+      const actualCol = binding.column ? (columnBindings?.[binding.column] || binding.column) : null
       const value = lookupCol(rowData, actualCol)
-      if (value !== undefined && value !== null && value !== '') {
+      if (binding.property === 'url') {
+        // Display text: prefer staticLabel (new), fall back to label column (backward compat)
+        if (binding.staticLabel) {
+          el.text = binding.staticLabel
+        } else if (binding.column && binding.column !== binding.urlColumn) {
+          if (value !== undefined && value !== null && value !== '') {
+            el.text = String(value)
+          }
+        }
+        // href from the URL column (binding.urlColumn)
+        const urlColName = columnBindings?.[binding.urlColumn] || binding.urlColumn
+        if (urlColName) {
+          const urlValue = lookupCol(rowData, urlColName)
+          if (urlValue !== undefined && urlValue !== null && urlValue !== '') {
+            el.href = String(urlValue)
+          }
+        }
+      } else if (value !== undefined && value !== null && value !== '') {
         if (binding.property === 'text') {
           let text = String(value)
 
@@ -140,7 +157,11 @@ export function detectTemplateVars(template) {
     }
   }
   for (const b of Object.values(template?.bindings || {})) {
-    if (b.column) vars.add(b.column)
+    if (b.property === 'url') {
+      if (b.urlColumn) vars.add(b.urlColumn)
+    } else if (b.column) {
+      vars.add(b.column)
+    }
   }
   return vars
 }
@@ -162,10 +183,27 @@ export function mergeRowIntoTemplate(templateJson, rowData, columnBindings) {
           if (binding[prop] !== undefined) el[prop] = binding[prop]
         }
 
-        const columnName = columnBindings?.[binding.column] || binding.column
+        const columnName = binding.column ? (columnBindings?.[binding.column] || binding.column) : null
         const value = lookupCol(rowData, columnName)
 
-        if (binding.property === 'text' && value !== undefined) {
+        if (binding.property === 'url') {
+          // Display text: prefer staticLabel (new), fall back to label column (backward compat)
+          if (binding.staticLabel) {
+            el.text = binding.staticLabel
+          } else if (binding.column && binding.column !== binding.urlColumn) {
+            if (value !== undefined && value !== null && value !== '') {
+              el.text = String(value)
+            }
+          }
+          // href from URL column
+          const urlColName = columnBindings?.[binding.urlColumn] || binding.urlColumn
+          if (urlColName) {
+            const urlValue = lookupCol(rowData, urlColName)
+            if (urlValue !== undefined && urlValue !== null && urlValue !== '') {
+              el.href = String(urlValue)
+            }
+          }
+        } else if (binding.property === 'text' && value !== undefined) {
           let text = String(value)
 
           // RTL auto-detection

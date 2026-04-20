@@ -8,15 +8,27 @@ import { Workspace } from 'polotno/canvas/workspace'
 import { Toolbar } from 'polotno/toolbar/toolbar'
 import { ZoomButtons } from 'polotno/toolbar/zoom-buttons'
 
-// Floating bar for per-element RTL / font-weight / align controls
+// Floating bar for per-element RTL / font-weight / align / hyperlink controls
 const ElementBar = observer(({ store }) => {
   const sel = store.selectedElements?.filter(e => e.type === 'text') || []
-  if (sel.length === 0) return null
   const el = sel[0]
-  const isRtl = el.align === 'right'
+
+  // Hyperlink state — must be declared before any conditional return (Rules of Hooks)
+  const [linkInput, setLinkInput] = useState('')
+  useEffect(() => { setLinkInput(el?.href || '') }, [el?.id])
+
+  if (sel.length === 0) return null
+
+  const isRtl = el.rtl || el.align === 'right'
+  const currentAlign = el.align || 'left'
 
   function toggleRtl() {
-    sel.forEach(e => e.set({ align: isRtl ? 'left' : 'right' }))
+    const next = !isRtl
+    sel.forEach(e => e.set({ rtl: next, align: next ? 'right' : 'left' }))
+  }
+
+  function setAlign(a) {
+    sel.forEach(e => e.set({ align: a }))
   }
 
   const weights = ['Thin','ExtraLight','Light','Regular','Medium','Bold','Black']
@@ -27,6 +39,24 @@ const ElementBar = observer(({ store }) => {
   function setWeight(w) {
     sel.forEach(e => e.set({ fontWeight: weightMap[w] }))
   }
+
+  function applyLink() {
+    const url = linkInput.trim()
+    sel.forEach(e => e.set({ href: url || undefined }))
+  }
+
+  function clearLink() {
+    setLinkInput('')
+    sel.forEach(e => e.set({ href: undefined }))
+  }
+
+  const alignBtnStyle = (active) => ({
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    width: 26, height: 22, borderRadius: 4, border: '1px solid #30363d',
+    background: active ? '#1f6feb' : '#21262d',
+    color: active ? '#fff' : '#c9d1d9',
+    cursor: 'pointer', flexShrink: 0,
+  })
 
   return (
     <div style={{
@@ -42,7 +72,7 @@ const ElementBar = observer(({ store }) => {
       {/* RTL / LTR toggle */}
       <button
         onClick={toggleRtl}
-        title="Toggle RTL / LTR for this element"
+        title="Toggle RTL / LTR text direction"
         style={{
           padding: '2px 10px', borderRadius: 4, border: '1px solid #30363d',
           background: isRtl ? '#1f6feb' : '#21262d',
@@ -52,6 +82,42 @@ const ElementBar = observer(({ store }) => {
       >
         {isRtl ? 'RTL ←' : '→ LTR'}
       </button>
+
+      {/* Alignment buttons */}
+      <div style={{ display: 'flex', gap: 2 }}>
+        {/* Left */}
+        <button onClick={() => setAlign('left')} title="Align left" style={alignBtnStyle(currentAlign === 'left')}>
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="currentColor">
+            <rect x="0" y="1" width="13" height="2" rx="1"/>
+            <rect x="0" y="5.5" width="9" height="2" rx="1"/>
+            <rect x="0" y="10" width="11" height="2" rx="1"/>
+          </svg>
+        </button>
+        {/* Center */}
+        <button onClick={() => setAlign('center')} title="Align center" style={alignBtnStyle(currentAlign === 'center')}>
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="currentColor">
+            <rect x="0" y="1" width="13" height="2" rx="1"/>
+            <rect x="2" y="5.5" width="9" height="2" rx="1"/>
+            <rect x="1" y="10" width="11" height="2" rx="1"/>
+          </svg>
+        </button>
+        {/* Right */}
+        <button onClick={() => setAlign('right')} title="Align right" style={alignBtnStyle(currentAlign === 'right')}>
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="currentColor">
+            <rect x="0" y="1" width="13" height="2" rx="1"/>
+            <rect x="4" y="5.5" width="9" height="2" rx="1"/>
+            <rect x="2" y="10" width="11" height="2" rx="1"/>
+          </svg>
+        </button>
+        {/* Justify */}
+        <button onClick={() => setAlign('justify')} title="Justify" style={alignBtnStyle(currentAlign === 'justify')}>
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="currentColor">
+            <rect x="0" y="1" width="13" height="2" rx="1"/>
+            <rect x="0" y="5.5" width="13" height="2" rx="1"/>
+            <rect x="0" y="10" width="13" height="2" rx="1"/>
+          </svg>
+        </button>
+      </div>
 
       {/* Weight picker */}
       <select
@@ -65,6 +131,41 @@ const ElementBar = observer(({ store }) => {
       >
         {weights.map(w => <option key={w} value={w}>{w}</option>)}
       </select>
+
+      {/* Divider */}
+      <div style={{ width: 1, height: 14, background: '#30363d', margin: '0 2px', flexShrink: 0 }} />
+
+      {/* Hyperlink */}
+      <span style={{ color: '#8b949e', fontSize: 11 }}>Link:</span>
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8b949e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+      </svg>
+      <input
+        type="url"
+        value={linkInput}
+        onChange={e => setLinkInput(e.target.value)}
+        onKeyDown={e => { if (e.key === 'Enter') { applyLink(); e.target.blur() } }}
+        onBlur={applyLink}
+        placeholder="https://..."
+        title="Hyperlink URL for this text element"
+        style={{
+          padding: '2px 6px', borderRadius: 4, border: `1px solid ${linkInput ? '#1f6feb' : '#30363d'}`,
+          background: '#21262d', color: '#c9d1d9', fontSize: 12, width: 200, outline: 'none',
+        }}
+      />
+      {linkInput && (
+        <button
+          onClick={clearLink}
+          title="Remove hyperlink"
+          style={{
+            padding: '2px 7px', borderRadius: 4, border: '1px solid #30363d',
+            background: '#21262d', color: '#8b949e', cursor: 'pointer', fontSize: 12,
+          }}
+        >
+          ×
+        </button>
+      )}
 
       {sel.length > 1 && (
         <span style={{ color: '#8b949e', fontSize: 11 }}>{sel.length} elements</span>

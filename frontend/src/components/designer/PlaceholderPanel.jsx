@@ -5,67 +5,105 @@ export default function PlaceholderPanel({ store, template, onTemplateChange }) 
   const [newType,      setNewType]      = useState('text')
   // Image binding options
   const [imgFrame,     setImgFrame]     = useState('rect')
-  const [imgFit,       setImgFit]       = useState('cover')
+  const [imgFit,       setImgFit]       = useState('contain')
   const [isBg,         setIsBg]         = useState(false)
   const [isLogoFlag,   setIsLogoFlag]   = useState(false)
   // Text binding options
   const [shrinkOflow,  setShrinkOflow]  = useState(true)
+  // URL binding options
+  const [urlHrefCol,     setUrlHrefCol]     = useState('')  // column that provides the URL
+  const [urlStaticLabel, setUrlStaticLabel] = useState('')  // static display text shown on slide
 
   const bindings = template?.bindings || {}
 
   function addBinding() {
+    const page = store.activePage
+    if (!page) return
+
+    // ── URL / Hyperlink placeholder ──────────────────────────────────────────
+    if (newType === 'url') {
+      const hrefCol     = urlHrefCol.trim().toLowerCase().replace(/\s+/g, '_')
+      const staticLabel = urlStaticLabel.trim()  // raw text, not normalised as column name
+      if (!hrefCol) return
+
+      // Display text: use typed label or fall back to column name
+      const displayText = staticLabel || hrefCol
+      const id = `el_${Date.now()}`
+
+      page.addElement({
+        type: 'text',
+        x: 100, y: 100,
+        width: 320, height: 50,
+        text: displayText,   // literal label on canvas, not {{col}}
+        fontSize: 20,
+        fill: '#1f6feb',
+        id,
+      })
+
+      onTemplateChange?.({
+        ...template,
+        bindings: {
+          ...bindings,
+          [id]: { property: 'url', staticLabel: displayText, urlColumn: hrefCol },
+        },
+      })
+
+      setUrlHrefCol('')
+      setUrlStaticLabel('')
+      return
+    }
+
+    // ── Text / Image placeholder ─────────────────────────────────────────────
     if (!newColumn.trim()) return
     const col = newColumn.trim().toLowerCase().replace(/\s+/g, '_')
+    const id = `el_${Date.now()}`
+    const isImage = newType === 'image'
 
-    const page = store.activePage
-    if (page) {
-      const id = `el_${Date.now()}`
-      const isImage = newType === 'image'
+    const elDef = isImage
+      ? {
+          type: 'image',
+          x: 100, y: 100,
+          width: 300, height: 200,
+          keepRatio: false,
+          src: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMzAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iIzM3NDE1MSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNiIgZmlsbD0iIzljYTNhZiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlIFBsYWNlaG9sZGVyPC90ZXh0Pjwvc3ZnPg==',
+          id,
+        }
+      : {
+          type: 'text',
+          x: 100, y: 100,
+          width: 400, height: 150,
+          text: `{{${col}}}`,
+          fontSize: 24,
+          fill: '#333333',
+          id,
+        }
 
-      const elDef = isImage
-        ? {
-            type: 'image',
-            x: 100, y: 100,
-            width: 300, height: 200,
-            keepRatio: false,
-            src: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMzAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iIzM3NDE1MSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNiIgZmlsbD0iIzljYTNhZiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlIFBsYWNlaG9sZGVyPC90ZXh0Pjwvc3ZnPg==',
-            id,
-          }
-        : {
-            type: 'text',
-            x: 100, y: 100,
-            width: 400, height: 150,
-            text: `{{${col}}}`,
-            fontSize: 24,
-            fill: '#333333',
-            id,
-          }
+    page.addElement(elDef)
 
-      page.addElement(elDef)
+    const bindingExtra = isImage
+      ? {
+          imageFit: imgFit,
+          imageFrame: imgFrame,
+          isBackground: isBg,
+          isLogo: isLogoFlag,
+        }
+      : {
+          shrinkOnOverflow: shrinkOflow,
+          minFontSize: 18,
+          resizeToFit: false,
+        }
 
-      const bindingExtra = isImage
-        ? {
-            imageFit: imgFit,
-            imageFrame: imgFrame,
-            isBackground: isBg,
-            isLogo: isLogoFlag,
-          }
-        : {
-            shrinkOnOverflow: shrinkOflow,
-            minFontSize: 18,
-            resizeToFit: false,
-          }
-
-      const updatedBindings = {
+    onTemplateChange?.({
+      ...template,
+      bindings: {
         ...bindings,
         [id]: { property: isImage ? 'src' : 'text', column: col, ...bindingExtra },
-      }
-      onTemplateChange?.({ ...template, bindings: updatedBindings })
-    }
+      },
+    })
 
     setNewColumn('')
     setImgFrame('rect')
-    setImgFit('cover')
+    setImgFit('contain')
     setIsBg(false)
     setIsLogoFlag(false)
     setShrinkOflow(true)
@@ -86,6 +124,11 @@ export default function PlaceholderPanel({ store, template, onTemplateChange }) 
   }
 
   const isImage = newType === 'image'
+  const isUrl   = newType === 'url'
+  const isText  = newType === 'text'
+
+  // Add button is disabled when required fields are empty
+  const canAdd = isUrl ? !!urlHrefCol.trim() : !!newColumn.trim()
 
   return (
     <div className="space-y-3">
@@ -97,16 +140,29 @@ export default function PlaceholderPanel({ store, template, onTemplateChange }) 
             <div key={elId} className="flex flex-col bg-gray-700/50 rounded px-2 py-1.5 gap-1.5">
               <div className="flex items-center justify-between">
                 <div className="min-w-0 flex-1">
-                  <span className="text-xs text-blue-300 font-mono">{`{{${binding.column}}}`}</span>
-                  <span className="text-xs text-gray-500 ml-1">({binding.property})</span>
-                  {binding.isLogo && (
-                    <span className="ml-1 text-xs bg-yellow-900/50 text-yellow-300 px-1 rounded">logo</span>
-                  )}
-                  {binding.isBackground && (
-                    <span className="ml-1 text-xs bg-purple-900/50 text-purple-300 px-1 rounded">bg</span>
-                  )}
-                  {binding.imageFrame && binding.imageFrame !== 'rect' && (
-                    <span className="ml-1 text-xs bg-gray-600/80 text-gray-300 px-1 rounded">{binding.imageFrame}</span>
+                  {binding.property === 'url' ? (
+                    <>
+                      <svg className="inline w-3 h-3 mr-1 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                      </svg>
+                      <span className="text-xs text-blue-300 font-mono underline">{binding.staticLabel || binding.column}</span>
+                      <span className="text-xs text-gray-500 ml-1">→ href: </span>
+                      <span className="text-xs text-gray-400 font-mono">{binding.urlColumn}</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-xs text-blue-300 font-mono">{`{{${binding.column}}}`}</span>
+                      <span className="text-xs text-gray-500 ml-1">({binding.property})</span>
+                      {binding.isLogo && (
+                        <span className="ml-1 text-xs bg-yellow-900/50 text-yellow-300 px-1 rounded">logo</span>
+                      )}
+                      {binding.isBackground && (
+                        <span className="ml-1 text-xs bg-purple-900/50 text-purple-300 px-1 rounded">bg</span>
+                      )}
+                      {binding.imageFrame && binding.imageFrame !== 'rect' && (
+                        <span className="ml-1 text-xs bg-gray-600/80 text-gray-300 px-1 rounded">{binding.imageFrame}</span>
+                      )}
+                    </>
                   )}
                 </div>
                 <button onClick={() => removeBinding(elId)} className="text-gray-500 hover:text-red-400 shrink-0 ml-2">
@@ -148,13 +204,8 @@ export default function PlaceholderPanel({ store, template, onTemplateChange }) 
       {/* Add new */}
       <div className="space-y-2">
         <p className="text-xs text-gray-500">Add placeholder</p>
-        <input
-          value={newColumn}
-          onChange={(e) => setNewColumn(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && addBinding()}
-          placeholder="column_name"
-          className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-xs text-white outline-none focus:border-blue-500 font-mono"
-        />
+
+        {/* Type selector — always visible */}
         <select
           value={newType}
           onChange={(e) => setNewType(e.target.value)}
@@ -162,14 +213,25 @@ export default function PlaceholderPanel({ store, template, onTemplateChange }) 
         >
           <option value="text">Text</option>
           <option value="image">Image</option>
+          <option value="url">URL / Hyperlink</option>
         </select>
+
+        {/* Text / Image: column name input */}
+        {!isUrl && (
+          <input
+            value={newColumn}
+            onChange={(e) => setNewColumn(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && addBinding()}
+            placeholder="column_name"
+            className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-xs text-white outline-none focus:border-blue-500 font-mono"
+          />
+        )}
 
         {/* Image-specific options */}
         {isImage && (
           <div className="space-y-2 pt-1 border-t border-gray-700">
             <p className="text-xs text-gray-500">Image options</p>
 
-            {/* Image fit mode */}
             <div className="flex items-center justify-between">
               <span className="text-xs text-gray-400">Fit mode</span>
               <div className="flex gap-1">
@@ -192,7 +254,6 @@ export default function PlaceholderPanel({ store, template, onTemplateChange }) 
               </div>
             </div>
 
-            {/* Frame shape */}
             <div className="flex items-center justify-between">
               <span className="text-xs text-gray-400">Frame</span>
               <select
@@ -206,7 +267,6 @@ export default function PlaceholderPanel({ store, template, onTemplateChange }) 
               </select>
             </div>
 
-            {/* Is background toggle */}
             <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
@@ -217,7 +277,6 @@ export default function PlaceholderPanel({ store, template, onTemplateChange }) 
               <span className="text-xs text-gray-400">Full-bleed background + scrim</span>
             </label>
 
-            {/* Is logo toggle */}
             <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
@@ -231,7 +290,7 @@ export default function PlaceholderPanel({ store, template, onTemplateChange }) 
         )}
 
         {/* Text-specific options */}
-        {!isImage && (
+        {isText && (
           <div className="space-y-2 pt-1 border-t border-gray-700">
             <label className="flex items-center gap-2 cursor-pointer">
               <input
@@ -245,9 +304,55 @@ export default function PlaceholderPanel({ store, template, onTemplateChange }) 
           </div>
         )}
 
+        {/* URL-specific options */}
+        {isUrl && (
+          <div className="space-y-2 pt-1 border-t border-gray-700">
+            <p className="text-xs text-gray-500">URL / Hyperlink options</p>
+
+            <div className="space-y-1">
+              <label className="text-xs text-gray-400">
+                URL column <span className="text-red-400">*</span>
+              </label>
+              <input
+                value={urlHrefCol}
+                onChange={(e) => setUrlHrefCol(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && addBinding()}
+                placeholder="e.g. website_url"
+                className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-xs text-white outline-none focus:border-blue-500 font-mono"
+              />
+              <p className="text-xs text-gray-600">Column that provides the hyperlink URL</p>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs text-gray-400">Display text (optional)</label>
+              <input
+                value={urlStaticLabel}
+                onChange={(e) => setUrlStaticLabel(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && addBinding()}
+                placeholder="e.g. Visit website"
+                className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-xs text-white outline-none focus:border-blue-500"
+              />
+              <p className="text-xs text-gray-600">Static text shown on slide (leave blank to use column name)</p>
+            </div>
+
+            {/* Preview */}
+            <div className="rounded px-2 py-1.5 bg-gray-800 border border-gray-600">
+              <p className="text-xs text-gray-500 mb-1">Preview on canvas:</p>
+              <span
+                className="text-xs underline"
+                style={{ color: '#1f6feb' }}
+              >
+                {urlStaticLabel.trim()
+                  || (urlHrefCol.trim() ? urlHrefCol.trim().toLowerCase().replace(/\s+/g, '_') : 'website')
+                }
+              </span>
+            </div>
+          </div>
+        )}
+
         <button
           onClick={addBinding}
-          disabled={!newColumn.trim()}
+          disabled={!canAdd}
           className="w-full py-1.5 text-xs font-medium bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white rounded transition-colors"
         >
           Add to Canvas

@@ -26,6 +26,21 @@ function interpolate(text, rowData, columnBindings) {
   })
 }
 
+function lookupCol(rowData, col) {
+  if (!rowData || col == null) return undefined
+  let val = rowData[col]
+  if (val !== undefined) return val
+  if (col.includes('_')) {
+    val = rowData[col.replace(/_/g, ' ')]
+    if (val !== undefined) return val
+  }
+  if (col.includes(' ')) {
+    val = rowData[col.replace(/ /g, '_')]
+    if (val !== undefined) return val
+  }
+  return undefined
+}
+
 function mergePageData(pageJson, rowData, bindings, columnBindings) {
   const merged = JSON.parse(JSON.stringify(pageJson))
   if (!merged.children) return merged
@@ -33,9 +48,28 @@ function mergePageData(pageJson, rowData, bindings, columnBindings) {
     // Explicit binding (registered via PlaceholderPanel)
     const binding = bindings?.[el.id]
     if (binding) {
-      const col   = columnBindings?.[binding.column] || binding.column
-      const value = rowData?.[col]
-      if (value !== undefined && value !== null && value !== '') {
+      const col   = binding.column ? (columnBindings?.[binding.column] || binding.column) : null
+      const value = lookupCol(rowData, col)
+      if (binding.property === 'url') {
+        // Static label (new format) or dynamic label (old format)
+        if (binding.staticLabel) {
+          el.text = binding.staticLabel
+        } else if (binding.column && binding.column !== binding.urlColumn) {
+          if (value !== undefined && value !== null && value !== '') {
+            el.text = String(value)
+          }
+        }
+        // href from URL column
+        const urlColName = binding.urlColumn
+          ? (columnBindings?.[binding.urlColumn] || binding.urlColumn)
+          : null
+        if (urlColName) {
+          const urlValue = lookupCol(rowData, urlColName)
+          if (urlValue !== undefined && urlValue !== null && urlValue !== '') {
+            el.href = String(urlValue)
+          }
+        }
+      } else if (value !== undefined && value !== null && value !== '') {
         if (binding.property === 'text') el.text = String(value)
         else if (binding.property === 'src') el.src = String(value)
       }
